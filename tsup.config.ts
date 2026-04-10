@@ -7,7 +7,7 @@ export default defineConfig({
   splitting: true,
   treeshake: true,
   clean: true,
-  target: "node18",
+  target: ["node18"],
   platform: "neutral",
   minify: false,
   sourcemap: true,
