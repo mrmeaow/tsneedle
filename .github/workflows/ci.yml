@@ -104,7 +104,7 @@ jobs:
         run: pnpm build
 
       - name: Release (dev)
-        run: npx release-please --prerelease=dev --release-type=node
+        run: npx release-please release-pr --prerelease=dev
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -144,7 +144,7 @@ jobs:
         run: pnpm build
 
       - name: Release (next)
-        run: npx release-please --prerelease=next --release-type=node
+        run: npx release-please release-pr --prerelease=next
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -184,7 +184,7 @@ jobs:
         run: pnpm build
 
       - name: Release (stable)
-        run: npx release-please --release-type=node
+        run: npx release-please release-pr
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
