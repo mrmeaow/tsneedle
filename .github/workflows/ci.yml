@@ -161,7 +161,7 @@ jobs:
         run: |
           CURRENT_VERSION=$(node -p "require('./package.json').version")
           echo "Publishing to JSR version: $CURRENT_VERSION"
-          npx jsr publish
+          npx jsr publish --allow-dirty
 
   release-next:
     needs: check
@@ -244,7 +244,7 @@ jobs:
         run: |
           CURRENT_VERSION=$(node -p "require('./package.json').version")
           echo "Publishing to JSR version: $CURRENT_VERSION"
-          npx jsr publish
+          npx jsr publish --allow-dirty
 
   release-stable:
     needs: check
@@ -297,4 +297,4 @@ jobs:
 
       - name: Publish to JSR (stable)
         if: steps.release.outputs.release_created == 'true'
-        run: npx jsr publish
+        run: npx jsr publish --allow-dirty
