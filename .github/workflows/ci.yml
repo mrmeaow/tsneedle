@@ -76,34 +76,151 @@ jobs:
       - name: Test CJS
         run: node --input-type=commonjs -e "require('./dist/index.cjs')" && echo "CJS OK"
 
-  release-please:
+  release-dev:
+    needs: check
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/dev'
+    permissions:
+      contents: write
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build
+        run: pnpm build
+
+      - name: Bump version and create release
+        id: release
+        run: |
+          # Run release-please to bump version and create release
+          # It will update package.json, CHANGELOG.md, and manifest
+          npx release-please github-release \
+            --token=${{ secrets.GITHUB_TOKEN }} \
+            --repo-url=${{ github.server_url }}/${{ github.repository }} \
+            --config-file=release-please-config.dev.json \
+            --manifest-file=.release-please-manifest.json 2>&1 || true
+
+      - name: Verify npm authentication
+        run: npm whoami
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Publish to npm (dev)
+        run: |
+          CURRENT_VERSION=$(node -p "require('./package.json').version")
+          echo "Publishing version: $CURRENT_VERSION"
+          
+          # Check if version already exists on npm
+          if npm view @mrmeaow/tsinject@$CURRENT_VERSION version &>/dev/null; then
+            echo "Version $CURRENT_VERSION already published, skipping"
+          else
+            npm publish --tag dev --access public
+          fi
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Publish to JSR (dev)
+        run: |
+          CURRENT_VERSION=$(node -p "require('./package.json').version")
+          echo "Publishing to JSR version: $CURRENT_VERSION"
+          npx jsr publish
+
+  release-next:
+    needs: check
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/next'
+    permissions:
+      contents: write
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build
+        run: pnpm build
+
+      - name: Bump version and create release
+        id: release
+        run: |
+          npx release-please github-release \
+            --token=${{ secrets.GITHUB_TOKEN }} \
+            --repo-url=${{ github.server_url }}/${{ github.repository }} \
+            --config-file=release-please-config.next.json \
+            --manifest-file=.release-please-manifest.json 2>&1 || true
+
+      - name: Verify npm authentication
+        run: npm whoami
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Publish to npm (next)
+        run: |
+          CURRENT_VERSION=$(node -p "require('./package.json').version")
+          echo "Publishing version: $CURRENT_VERSION"
+          
+          if npm view @mrmeaow/tsinject@$CURRENT_VERSION version &>/dev/null; then
+            echo "Version $CURRENT_VERSION already published, skipping"
+          else
+            npm publish --tag next --access public
+          fi
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Publish to JSR (next)
+        run: |
+          CURRENT_VERSION=$(node -p "require('./package.json').version")
+          echo "Publishing to JSR version: $CURRENT_VERSION"
+          npx jsr publish
+
+  release-stable:
     needs: check
     runs-on: ubuntu-latest
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     permissions:
       contents: write
       pull-requests: write
-    outputs:
-      release_created: ${{ steps.release.outputs.release_created }}
-      tag_name: ${{ steps.release.outputs.tag_name }}
-      upload_url: ${{ steps.release.outputs.upload_url }}
+      id-token: write
     steps:
       - uses: googleapis/release-please-action@v4
         id: release
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
 
-  publish-stable:
-    needs: release-please
-    runs-on: ubuntu-latest
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && needs.release-please.outputs.release_created == 'true'
-    permissions:
-      contents: read
-      id-token: write
-    steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          ref: main
 
       - uses: pnpm/action-setup@v4
         with:
@@ -127,203 +244,14 @@ jobs:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
       - name: Publish to npm (stable)
-        run: npm publish --access public
+        if: steps.release.outputs.release_created == 'true'
+        run: |
+          CURRENT_VERSION=$(node -p "require('./package.json').version")
+          echo "Publishing stable version: $CURRENT_VERSION"
+          npm publish --access public
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
       - name: Publish to JSR (stable)
-        run: npx jsr publish
-
-  release-please-dev:
-    needs: check
-    runs-on: ubuntu-latest
-    if: github.event_name == 'push' && github.ref == 'refs/heads/dev'
-    permissions:
-      contents: write
-    outputs:
-      release_created: ${{ steps.release.outputs.release_created }}
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-          ref: dev
-
-      - name: Create prerelease config
-        run: |
-          cat > release-please-config.prerelease.json <<'EOF'
-          {
-            "release-type": "node",
-            "packages": {
-              ".": {
-                "package-name": "@mrmeaow/tsinject",
-                "changelog-path": "CHANGELOG.md",
-                "prerelease": true,
-                "prerelease-type": "dev",
-                "versioning": "prerelease"
-              }
-            },
-            "changelog-path": "CHANGELOG.md",
-            "include-component-in-tag": false,
-            "includeVInTag": true,
-            "prerelease": true,
-            "bump-minor-pre-major": true,
-            "bump-patch-for-minor-pre-major": true
-          }
-          EOF
-
-      - name: Release Please
-        id: release
-        run: |
-          OUTPUT=$(npx release-please github-release \
-            --token=${{ secrets.GITHUB_TOKEN }} \
-            --repo-url=${{ github.server_url }}/${{ github.repository }} \
-            --config-file=release-please-config.dev.json \
-            --manifest-file=.release-please-manifest.json 2>&1) || true
-
-          echo "$OUTPUT"
-
-          # Check if a release was created
-          if echo "$OUTPUT" | grep -q "release_created.*true\|Created release\|tag_name"; then
-            echo "release_created=true" >> $GITHUB_OUTPUT
-          else
-            echo "release_created=false" >> $GITHUB_OUTPUT
-          fi
-
-  publish-dev:
-    needs: release-please-dev
-    runs-on: ubuntu-latest
-    if: github.event_name == 'push' && github.ref == 'refs/heads/dev' && needs.release-please-dev.outputs.release_created == 'true'
-    permissions:
-      contents: read
-      id-token: write
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-          ref: dev
-
-      - uses: pnpm/action-setup@v4
-        with:
-          version: 9
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: pnpm
-          registry-url: 'https://registry.npmjs.org'
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-
-      - name: Build
-        run: pnpm build
-
-      - name: Verify npm authentication
-        run: npm whoami
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-
-      - name: Publish to npm (dev)
-        run: npm publish --tag dev --access public
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-
-      - name: Publish to JSR (dev)
-        run: npx jsr publish
-
-  release-please-next:
-    needs: check
-    runs-on: ubuntu-latest
-    if: github.event_name == 'push' && github.ref == 'refs/heads/next'
-    permissions:
-      contents: write
-    outputs:
-      release_created: ${{ steps.release.outputs.release_created }}
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-          ref: next
-
-      - name: Create prerelease config
-        run: |
-          cat > release-please-config.prerelease.json <<'EOF'
-          {
-            "release-type": "node",
-            "packages": {
-              ".": {
-                "package-name": "@mrmeaow/tsinject",
-                "changelog-path": "CHANGELOG.md",
-                "prerelease": true,
-                "prerelease-type": "next",
-                "versioning": "prerelease"
-              }
-            },
-            "changelog-path": "CHANGELOG.md",
-            "include-component-in-tag": false,
-            "includeVInTag": true,
-            "prerelease": true,
-            "bump-minor-pre-major": true,
-            "bump-patch-for-minor-pre-major": true
-          }
-          EOF
-
-      - name: Release Please
-        id: release
-        run: |
-          OUTPUT=$(npx release-please github-release \
-            --token=${{ secrets.GITHUB_TOKEN }} \
-            --repo-url=${{ github.server_url }}/${{ github.repository }} \
-            --config-file=release-please-config.next.json \
-            --manifest-file=.release-please-manifest.json 2>&1) || true
-
-          echo "$OUTPUT"
-
-          # Check if a release was created
-          if echo "$OUTPUT" | grep -q "release_created.*true\|Created release\|tag_name"; then
-            echo "release_created=true" >> $GITHUB_OUTPUT
-          else
-            echo "release_created=false" >> $GITHUB_OUTPUT
-          fi
-
-  publish-next:
-    needs: release-please-next
-    runs-on: ubuntu-latest
-    if: github.event_name == 'push' && github.ref == 'refs/heads/next' && needs.release-please-next.outputs.release_created == 'true'
-    permissions:
-      contents: read
-      id-token: write
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-          ref: next
-
-      - uses: pnpm/action-setup@v4
-        with:
-          version: 9
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: pnpm
-          registry-url: 'https://registry.npmjs.org'
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-
-      - name: Build
-        run: pnpm build
-
-      - name: Verify npm authentication
-        run: npm whoami
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-
-      - name: Publish to npm (next)
-        run: npm publish --tag next --access public
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-
-      - name: Publish to JSR (next)
+        if: steps.release.outputs.release_created == 'true'
         run: npx jsr publish
