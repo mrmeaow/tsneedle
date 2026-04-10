@@ -4,7 +4,7 @@
   <a href="https://www.npmjs.com/package/tsinject"><img src="https://img.shields.io/npm/v/@mrmeaow/tsinject.svg" alt="npm version" /></a>
   <a href="https://jsr.io/@mrmeaow/tsinject"><img src="https://img.shields.io/jsr/v/@tsinject/tsinject" alt="JSR version" /></a>
   <a href="https://github.com/mrmeaow/tsinject/actions/workflows/ci.yml"><img src="https://github.com/mrmeaow/tsinject/actions/workflows/ci.yml/badge.svg" alt="CI status" /></a>
-  <a href="https://coveralls.io/github/mrmeaow/tsinject?branch=main"><img src="https://coveralls.io/repos/github/mrmeaow/tsinject/badge.svg?branch=main" alt="Coverage" /></a>
+  <a href="https://github.com/mrmeaow/tsinject/actions"><img src="https://img.shields.io/badge/coverage-48%25-yellow" alt="Coverage" /></a>
 </p>
 
 A sharp, modern, lightweight dependency injection container for TypeScript. Zero runtime dependencies, ESM + CJS support, and strong type safety.

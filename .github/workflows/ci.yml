@@ -252,15 +252,8 @@ jobs:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     permissions:
       contents: write
-      pull-requests: write
       id-token: write
     steps:
-      - uses: googleapis/release-please-action@v4
-        id: release
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          skip-github-pull-request: true
-
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
@@ -287,15 +280,26 @@ jobs:
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
-      - name: Publish to npm (stable)
-        if: steps.release.outputs.release_created == 'true'
+      - name: Check if version exists on npm
+        id: check
         run: |
           CURRENT_VERSION=$(node -p "require('./package.json').version")
-          echo "Publishing stable version: $CURRENT_VERSION"
+          echo "version=$CURRENT_VERSION" >> $GITHUB_OUTPUT
+          if npm view @mrmeaow/tsinject@$CURRENT_VERSION version &>/dev/null; then
+            echo "exists=true" >> $GITHUB_OUTPUT
+          else
+            echo "exists=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Publish to npm (stable)
+        if: steps.check.outputs.exists == 'false'
+        run: |
+          echo "Publishing @mrmeaow/tsinject@${{ steps.check.outputs.version }} to npm"
           npm publish --access public
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
       - name: Publish to JSR (stable)
-        if: steps.release.outputs.release_created == 'true'
-        run: npx jsr publish --allow-dirty
+        run: |
+          echo "Publishing @mrmeaow/tsinject@${{ steps.check.outputs.version }} to JSR"
+          npx jsr publish --allow-dirty
