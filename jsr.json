@@ -1,1 +1,6 @@
-{ "name": "@mrmeaow/tsinject", "version": "1.0.1", "exports": "./dist/index.js", "publish": { "include": ["dist", "LICENSE", "README.md"] } }
+{
+  "name": "@mrmeaow/tsinject",
+  "version": "1.0.1",
+  "exports": "./dist/index.js",
+  "publish": { "include": ["dist", "LICENSE", "README.md"] }
+}
