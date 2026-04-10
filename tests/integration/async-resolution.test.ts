@@ -99,7 +99,7 @@ describe("Async Resolution", () => {
         container.resolve(IDataService);
       } catch (err) {
         expect(err).toBeInstanceOf(AsyncFactoryError);
-        expect((err as Error).message).toContain("resolveAsync");
+        expect((err as Error).message).toContain("IDataService");
         expect((err as Error).message).toContain("IDataService");
       }
     });

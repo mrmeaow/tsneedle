@@ -86,12 +86,12 @@ export class Container {
     const binding = this.getBinding(token);
     if (!binding) {
       const registered = this.getRegisteredTokenNames();
-      throw new ResolutionError(token, this.getScopePath(), registered);
+      throw new ResolutionError(token, this.getScopePath(), registered as unknown[]);
     }
 
     // Check circular dependency
     if (this.resolutionStack.includes(token)) {
-      throw new CircularDependencyError([...this.resolutionStack], token);
+      throw new CircularDependencyError(token, [...this.resolutionStack]);
     }
 
     // Check if factory is async - can't use sync resolve for async factories
@@ -166,12 +166,12 @@ export class Container {
     const binding = this.getBinding(token);
     if (!binding) {
       const registered = this.getRegisteredTokenNames();
-      throw new ResolutionError(token, this.getScopePath(), registered);
+      throw new ResolutionError(token, this.getScopePath(), registered as unknown[]);
     }
 
     // Check circular dependency
     if (this.resolutionStack.includes(token)) {
-      throw new CircularDependencyError([...this.resolutionStack], token);
+      throw new CircularDependencyError(token, [...this.resolutionStack]);
     }
 
     // Push to resolution stack

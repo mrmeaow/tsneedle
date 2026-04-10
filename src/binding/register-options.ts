@@ -1,3 +1,5 @@
+import type { Lifecycle } from "./lifecycle.js";
+
 /**
  * Options for registering a dependency.
  *

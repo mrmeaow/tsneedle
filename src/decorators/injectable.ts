@@ -1,3 +1,12 @@
+import { Lifecycle } from "../binding/lifecycle.js";
+import { MetadataRegistry } from "../metadata/metadata-registry.js";
+import type { Constructor } from "../utils/constructor.js";
+
+export interface InjectableMeta {
+  lifecycle: Lifecycle;
+  tags: string[];
+}
+
 /**
  * Mark a class as injectable.
  *

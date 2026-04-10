@@ -23,3 +23,26 @@ export interface ResolutionContext {
   /** Tags associated with the current resolution */
   readonly tags: ReadonlySet<string>;
 }
+
+/**
+ * Create a resolution context from a container.
+ *
+ * @param container - The container to wrap
+ * @returns A resolution context instance
+ */
+export function createResolutionContext(
+  container: Container,
+): ResolutionContext {
+  return {
+    resolve: <T>(token: Token<T>): T => container.resolve(token),
+    resolveAsync: <T>(token: Token<T>): Promise<T> =>
+      container.resolveAsync(token),
+    tryResolve: <T>(token: Token<T>): T | undefined =>
+      container.tryResolve(token),
+    tryResolveAsync: <T>(token: Token<T>): Promise<T | undefined> =>
+      container.tryResolveAsync(token),
+    container,
+    scope: container,
+    tags: new Set(),
+  };
+}
