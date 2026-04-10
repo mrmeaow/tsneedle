@@ -1,5 +1,9 @@
+import {
+  Container,
+  type ResolutionContext,
+  createToken,
+} from "@mrmeaow/tsinject";
 import { describe, expect, it, vi } from "vitest";
-import { Container, createToken, type ResolutionContext } from "@mrmeaow/tsinject";
 
 describe("Resolution Context", () => {
   describe("Context in factories", () => {

@@ -1,10 +1,10 @@
-import { describe, expect, it, vi } from "vitest";
 import {
   Container,
-  createToken,
   Lifecycle,
+  createToken,
   defineModule,
 } from "@mrmeaow/tsinject";
+import { describe, expect, it, vi } from "vitest";
 
 describe("Comprehensive Coverage Tests", () => {
   describe("Container - Async Resolution", () => {
@@ -22,7 +22,9 @@ describe("Comprehensive Coverage Tests", () => {
       const AliasToken = createToken<string>("AliasAsync");
       const container = new Container();
       container.registerValue(OriginalToken, "aliased");
-      container.registerFactory(AliasToken, (ctx) => ctx.resolve(OriginalToken));
+      container.registerFactory(AliasToken, (ctx) =>
+        ctx.resolve(OriginalToken),
+      );
 
       const result = await container.resolveAsync(AliasToken);
       expect(result).toBe("aliased");
@@ -211,7 +213,9 @@ describe("Comprehensive Coverage Tests", () => {
     });
 
     it("should handle postConstruct via factory", () => {
-      const Token = createToken<{ initialized: boolean }>("PostConstructFactory");
+      const Token = createToken<{ initialized: boolean }>(
+        "PostConstructFactory",
+      );
 
       const container = new Container();
       container.registerFactory(Token, () => {
@@ -241,7 +245,9 @@ describe("Comprehensive Coverage Tests", () => {
 
     it("should handle preDestroy via dispose", async () => {
       const Token = createToken<{ disposed: boolean }>("PreDestroyFactory");
-      const disposeFn = vi.fn((instance: any) => { instance.disposed = true; });
+      const disposeFn = vi.fn((instance: any) => {
+        instance.disposed = true;
+      });
 
       const container = new Container();
       container.registerFactory(Token, () => ({ disposed: false }), {
@@ -280,13 +286,19 @@ describe("Comprehensive Coverage Tests", () => {
 
       const moduleA = defineModule({
         providers: [
-          { token: TokenA, provider: { type: "value", useValue: "imported-a" } },
+          {
+            token: TokenA,
+            provider: { type: "value", useValue: "imported-a" },
+          },
         ],
       });
 
       const moduleB = defineModule({
         providers: [
-          { token: TokenB, provider: { type: "value", useValue: "imported-b" } },
+          {
+            token: TokenB,
+            provider: { type: "value", useValue: "imported-b" },
+          },
         ],
         imports: [moduleA],
       });
