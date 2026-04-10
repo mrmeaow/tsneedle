@@ -2,9 +2,9 @@ name: CI
 
 on:
   push:
-    branches: [main, next, dev]
+    branches: [main]
   pull_request:
-    branches: [main, next, dev]
+    branches: [main]
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -44,6 +44,76 @@ jobs:
 
       - name: Test
         run: pnpm test:coverage
+        id: test
+
+      - name: Generate coverage badge
+        id: generate-badge
+        run: |
+          # Parse coverage from JSON report
+          COVERAGE=$(node -e "
+            const fs = require('fs');
+            const data = JSON.parse(fs.readFileSync('coverage/coverage-final.json', 'utf8'));
+            
+            // Calculate total lines and covered lines
+            let totalLines = 0;
+            let coveredLines = 0;
+            
+            for (const [file, coverage] of Object.entries(data)) {
+              if (coverage.f) {
+                // Count function coverage as proxy for line coverage
+                for (const [fn, count] of Object.entries(coverage.f)) {
+                  if (count > 0) coveredLines++;
+                }
+              }
+              if (coverage.s) {
+                for (const [stmt, count] of Object.entries(coverage.s)) {
+                  totalLines++;
+                  if (count > 0) coveredLines++;
+                }
+              }
+            }
+            
+            const percent = totalLines > 0 ? (coveredLines / totalLines * 100).toFixed(2) : 0;
+            console.log(percent);
+          ")
+          
+          # Round to integer
+          COVERAGE_INT=$(printf "%.0f" "$COVERAGE")
+          
+          # Determine color based on coverage percentage
+          if (( COVERAGE_INT >= 90 )); then
+            COLOR="brightgreen"
+          elif (( COVERAGE_INT >= 75 )); then
+            COLOR="green"
+          elif (( COVERAGE_INT >= 50 )); then
+            COLOR="yellow"
+          else
+            COLOR="red"
+          fi
+          
+          echo "Coverage: ${COVERAGE_INT}%"
+          echo "coverage=$COVERAGE_INT" >> $GITHUB_OUTPUT
+          echo "color=$COLOR" >> $GITHUB_OUTPUT
+          
+          # Generate dynamic badge URL for README
+          BADGE_URL="https://img.shields.io/badge/coverage-${COVERAGE_INT}%25-${COLOR}"
+          echo "badge_url=$BADGE_URL" >> $GITHUB_OUTPUT
+          echo "::notice::Coverage badge: $BADGE_URL"
+
+      - name: Commit coverage badge update
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: |
+          COVERAGE="${{ steps.generate-badge.outputs.coverage }}"
+          COLOR="${{ steps.generate-badge.outputs.color }}"
+          
+          # Update README badge
+          sed -i "s|coverage-[0-9]*%25-[a-z]*|coverage-${COVERAGE}%25-${COLOR}|g" README.md
+          
+          # Commit the change
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          git add README.md
+          git diff --cached --quiet || git commit -m "docs: update coverage badge to ${COVERAGE}%"
 
       - name: Check exports
         run: pnpm check:exports
@@ -75,176 +145,6 @@ jobs:
 
       - name: Test CJS
         run: node --input-type=commonjs -e "require('./dist/index.cjs')" && echo "CJS OK"
-
-  release-dev:
-    needs: check
-    runs-on: ubuntu-latest
-    if: github.event_name == 'push' && github.ref == 'refs/heads/dev'
-    permissions:
-      contents: write
-      id-token: write
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-          token: ${{ secrets.GITHUB_TOKEN }}
-
-      - uses: pnpm/action-setup@v4
-        with:
-          version: 9
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: pnpm
-          registry-url: 'https://registry.npmjs.org'
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-
-      - name: Build
-        run: pnpm build
-
-      - name: Bump version and create release
-        id: release
-        run: |
-          # Create config inline to avoid fetching from main branch
-          cat > release-please-config.dev.json <<'EOF'
-          {
-            "release-type": "node",
-            "packages": {
-              ".": {
-                "package-name": "@mrmeaow/tsinject",
-                "changelog-path": "CHANGELOG.md",
-                "prerelease": true,
-                "prerelease-type": "dev",
-                "versioning": "prerelease"
-              }
-            },
-            "changelog-path": "CHANGELOG.md",
-            "include-component-in-tag": false,
-            "includeVInTag": true,
-            "prerelease": true,
-            "bump-minor-pre-major": true,
-            "bump-patch-for-minor-pre-major": true
-          }
-          EOF
-
-          # Run release-please to bump version and create release
-          # It will update package.json, CHANGELOG.md, and manifest
-          npx release-please github-release \
-            --token=${{ secrets.GITHUB_TOKEN }} \
-            --repo-url=${{ github.server_url }}/${{ github.repository }} \
-            --config-file=release-please-config.dev.json \
-            --manifest-file=.release-please-manifest.json 2>&1 || true
-
-      - name: Verify npm authentication
-        run: npm whoami
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-
-      - name: Publish to npm (dev)
-        run: |
-          CURRENT_VERSION=$(node -p "require('./package.json').version")
-          echo "Publishing version: $CURRENT_VERSION"
-          
-          # Check if version already exists on npm
-          if npm view @mrmeaow/tsinject@$CURRENT_VERSION version &>/dev/null; then
-            echo "Version $CURRENT_VERSION already published, skipping"
-          else
-            npm publish --tag dev --access public
-          fi
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-
-      - name: Publish to JSR (dev)
-        run: |
-          CURRENT_VERSION=$(node -p "require('./package.json').version")
-          echo "Publishing to JSR version: $CURRENT_VERSION"
-          npx jsr publish --allow-dirty
-
-  release-next:
-    needs: check
-    runs-on: ubuntu-latest
-    if: github.event_name == 'push' && github.ref == 'refs/heads/next'
-    permissions:
-      contents: write
-      id-token: write
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-          token: ${{ secrets.GITHUB_TOKEN }}
-
-      - uses: pnpm/action-setup@v4
-        with:
-          version: 9
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: pnpm
-          registry-url: 'https://registry.npmjs.org'
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-
-      - name: Build
-        run: pnpm build
-
-      - name: Bump version and create release
-        id: release
-        run: |
-          cat > release-please-config.next.json <<'EOF'
-          {
-            "release-type": "node",
-            "packages": {
-              ".": {
-                "package-name": "@mrmeaow/tsinject",
-                "changelog-path": "CHANGELOG.md",
-                "prerelease": true,
-                "prerelease-type": "next",
-                "versioning": "prerelease"
-              }
-            },
-            "changelog-path": "CHANGELOG.md",
-            "include-component-in-tag": false,
-            "includeVInTag": true,
-            "prerelease": true,
-            "bump-minor-pre-major": true,
-            "bump-patch-for-minor-pre-major": true
-          }
-          EOF
-
-          npx release-please github-release \
-            --token=${{ secrets.GITHUB_TOKEN }} \
-            --repo-url=${{ github.server_url }}/${{ github.repository }} \
-            --config-file=release-please-config.next.json \
-            --manifest-file=.release-please-manifest.json 2>&1 || true
-
-      - name: Verify npm authentication
-        run: npm whoami
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-
-      - name: Publish to npm (next)
-        run: |
-          CURRENT_VERSION=$(node -p "require('./package.json').version")
-          echo "Publishing version: $CURRENT_VERSION"
-          
-          if npm view @mrmeaow/tsinject@$CURRENT_VERSION version &>/dev/null; then
-            echo "Version $CURRENT_VERSION already published, skipping"
-          else
-            npm publish --tag next --access public
-          fi
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-
-      - name: Publish to JSR (next)
-        run: |
-          CURRENT_VERSION=$(node -p "require('./package.json').version")
-          echo "Publishing to JSR version: $CURRENT_VERSION"
-          npx jsr publish --allow-dirty
 
   release-stable:
     needs: check

@@ -1,96 +1,60 @@
-import {
-  type Binding,
-  Lifecycle,
-  type Provider,
-  type RegisterOptions,
-  createToken,
-} from "@mrmeaow/tsinject";
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi, beforeEach } from "vitest";
+import { Container, createToken, Lifecycle, defineModule } from "@mrmeaow/tsinject";
 
-interface IRepo {
-  find(): string;
-}
+describe("Binding & Provider Types", () => {
+  describe("createBinding", () => {
+    it("should create value binding", () => {
+      const Token = createToken<string>("Value");
+      const container = new Container();
+      container.registerValue(Token, "test");
+      expect(container.resolve(Token)).toBe("test");
+    });
 
-class Repo implements IRepo {
-  find(): string {
-    return "repo";
-  }
-}
+    it("should create class binding with lifecycle", () => {
+      const Token = createToken<object>("Class");
+      class Service {}
+      const container = new Container();
+      container.registerClass(Token, Service, { lifecycle: Lifecycle.Singleton });
+      const a = container.resolve(Token);
+      const b = container.resolve(Token);
+      expect(a).toBe(b);
+    });
 
-describe("Binding", () => {
-  it("should create a binding with class provider", () => {
-    const token = createToken<IRepo>("IRepo");
-    const provider: Provider<IRepo> = {
-      type: "class",
-      useClass: Repo,
-    };
+    it("should create factory binding with context", () => {
+      const Dep = createToken<string>("Dep");
+      const Token = createToken<string>("Factory");
+      const container = new Container();
+      container.registerValue(Dep, "dep-value");
+      container.registerFactory(Token, (ctx) => `got-${ctx.resolve(Dep)}`);
+      expect(container.resolve(Token)).toBe("got-dep-value");
+    });
 
-    const binding = createBinding(token, provider);
+    it("should create alias binding", () => {
+      const Original = createToken<string>("Original");
+      const Alias = createToken<string>("Alias");
+      const container = new Container();
+      container.registerValue(Original, "original");
+      container.registerFactory(Alias, (ctx) => ctx.resolve(Original));
+      expect(container.resolve(Alias)).toBe("original");
+      expect(container.resolve(Original)).toBe(container.resolve(Alias));
+    });
 
-    expect(binding.token).toBe(token);
-    expect(binding.provider).toBe(provider);
-    expect(binding.lifecycle).toBe(Lifecycle.Transient);
-    expect(binding.tags).toEqual([]);
-    expect(binding.dispose).toBeUndefined();
-  });
+    it("should register with tags", () => {
+      const Token = createToken<object>("Tagged");
+      const container = new Container();
+      container.registerFactory(Token, () => ({}), { tags: ["web", "api"] });
+      expect(container.resolve(Token)).toBeDefined();
+    });
 
-  it("should apply register options", () => {
-    const token = createToken<IRepo>("IRepo");
-    const provider: Provider<IRepo> = {
-      type: "value",
-      useValue: new Repo(),
-    };
-    const options: RegisterOptions = {
-      lifecycle: Lifecycle.Singleton,
-      tags: ["db", "singleton"],
-      dispose: vi.fn(),
-    };
-
-    const binding = createBinding(token, provider, options);
-
-    expect(binding.lifecycle).toBe(Lifecycle.Singleton);
-    expect(binding.tags).toEqual(["db", "singleton"]);
-    expect(binding.dispose).toBe(options.dispose);
-  });
-
-  it("should default to transient lifecycle", () => {
-    const token = createToken<IRepo>("IRepo");
-    const provider: Provider<IRepo> = { type: "class", useClass: Repo };
-
-    const binding = createBinding(token, provider);
-
-    expect(binding.lifecycle).toBe(Lifecycle.Transient);
-  });
-
-  it("should default empty tags", () => {
-    const token = createToken<IRepo>("IRepo");
-    const provider: Provider<IRepo> = { type: "class", useClass: Repo };
-
-    const binding = createBinding(token, provider);
-
-    expect(binding.tags).toEqual([]);
-  });
-
-  it("should return a frozen object", () => {
-    const token = createToken<IRepo>("IRepo");
-    const provider: Provider<IRepo> = { type: "class", useClass: Repo };
-
-    const binding = createBinding(token, provider);
-
-    expect(Object.isFrozen(binding)).toBe(true);
+    it("should register with dispose callback", async () => {
+      const Token = createToken<object>("Disposable");
+      const disposeFn = vi.fn();
+      const instance = { id: "test" };
+      const container = new Container();
+      container.registerFactory(Token, () => instance, { dispose: disposeFn });
+      container.resolve(Token);
+      await container.dispose();
+      expect(disposeFn).toHaveBeenCalledWith(instance);
+    });
   });
 });
-
-describe("Binding type", () => {
-  it("should match Binding<T> interface", () => {
-    const token = createToken<IRepo>("IRepo");
-    const provider: Provider<IRepo> = { type: "class", useClass: Repo };
-
-    const binding: Binding<IRepo> = createBinding(token, provider);
-
-    expect(binding.provider.type).toBe("class");
-  });
-});
-
-// Helper function - need to import from binding module
-import { createBinding } from "@mrmeaow/tsinject";

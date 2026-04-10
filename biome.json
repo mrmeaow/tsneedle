@@ -29,6 +29,6 @@
     "lineWidth": 80
   },
   "files": {
-    "ignore": ["dist/**"]
+    "ignore": ["dist/**", "coverage/**", "node_modules/**"]
   }
 }

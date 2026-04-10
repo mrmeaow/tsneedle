@@ -17,7 +17,6 @@ This file guides AI agents (including future instances of yourself) when working
 
 ```
 tsinject/
-├── .context/                # Documentation (generated from plan-draft.md)
 ├── src/                     # Library source code
 │   ├── index.ts             # Public barrel export
 │   ├── reflect.ts           # Optional reflect-metadata bridge
