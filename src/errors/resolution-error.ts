@@ -1,25 +1,28 @@
-import type { Token } from "../token/token.js";
-
+/**
+ * Error thrown when a token cannot be resolved.
+ */
 export class ResolutionError extends Error {
-  override readonly name = "ResolutionError";
-  readonly token: Token<unknown>;
-  readonly containerPath: readonly string[];
-
+  /**
+   * @param token - Token that failed (object with name or string)
+   * @param scopePath - Path of scopes searched
+   * @param registeredTokens - List of registered token names
+   */
   constructor(
-    token: Token<unknown>,
-    containerPath: string[],
-    registered?: string[],
+    token: unknown,
+    scopePath: string[] = [],
+    registeredTokens: unknown[] = [],
   ) {
-    const scope =
-      containerPath.length > 0 ? ` (scope: ${containerPath.join(" → ")})` : "";
-    super(
-      `No binding found for token "${token.name}"${scope}\n\n${
-        registered?.length
-          ? `Registered tokens:\n  ${registered.map((t) => `• ${t}`).join("\n  ")}\n\n`
-          : ""
-      }Hint: Did you forget to register "${token.name}" in this container?`,
+    const tokenName = typeof token === "object" && token !== null && "name" in token
+      ? String(token.name)
+      : String(token);
+    const scopeStr = scopePath.length > 0 ? ` in scopes [${scopePath.join(" → ")}]` : "";
+    const registeredNames = registeredTokens.map((t) =>
+      typeof t === "object" && t !== null && "name" in t ? String(t.name) : String(t)
     );
-    this.token = token;
-    this.containerPath = containerPath;
+    const hint = registeredNames.length > 0
+      ? `\nHint: Did you forget to register "${tokenName}" in this container?`
+      : "";
+    super(`No binding found for token "${tokenName}"${scopeStr}${hint}`);
+    this.name = "ResolutionError";
   }
 }

@@ -1,7 +1,9 @@
+/**
+ * Error thrown when trying to resolve from a disposed container.
+ */
 export class DisposedContainerError extends Error {
-  override readonly name = "DisposedContainerError";
-
   constructor() {
-    super("Container has been disposed and can no longer be used.");
+    super("Cannot resolve from a disposed container");
+    this.name = "DisposedContainerError";
   }
 }

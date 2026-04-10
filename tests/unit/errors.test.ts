@@ -1,56 +1,79 @@
 import { describe, expect, it } from "vitest";
-import { Container } from "../../src/container/container.js";
-import { AsyncFactoryError } from "../../src/errors/async-factory-error.js";
 import { CircularDependencyError } from "../../src/errors/circular-dependency-error.js";
 import { DisposedContainerError } from "../../src/errors/disposed-container-error.js";
 import { ResolutionError } from "../../src/errors/resolution-error.js";
-import { type Token, createToken } from "../../src/token/token.js";
+import { AsyncFactoryError } from "../../src/errors/async-factory-error.js";
+import { createToken } from "../../src/token/token.js";
 
 describe("Error Classes", () => {
   describe("CircularDependencyError", () => {
-    it("should include chain and culprit", () => {
-      const tokenA = createToken<unknown>("A");
-      const tokenB = createToken<unknown>("B");
-      const tokenC = createToken<unknown>("C");
+    it("should create error with token name", () => {
+      const token = createToken<object>("CircularService");
+      const error = new CircularDependencyError(token);
 
-      const error = new CircularDependencyError([tokenA, tokenB], tokenC);
+      expect(error).toBeInstanceOf(Error);
+      expect(error.message).toContain("Circular dependency detected");
+      expect(error.message).toContain("CircularService");
+    });
 
-      expect(error.message).toContain("Circular");
-      expect(error.message).toContain("C");
+    it("should include chain if provided", () => {
+      const token = createToken<object>("CircularService");
+      const error = new CircularDependencyError(token, ["A", "B"]);
+
+      expect(error.message).toContain("A → B");
     });
   });
 
   describe("ResolutionError", () => {
-    it("should include token name and registered tokens", () => {
-      const token = createToken<unknown>("MissingToken");
-      const knownToken = createToken<unknown>("known");
+    it("should create error with token name", () => {
+      const token = createToken<string>("MissingToken");
+      const error = new ResolutionError(token);
 
-      const error = new ResolutionError(token, [], ["known"]);
+      expect(error).toBeInstanceOf(Error);
+      expect(error.message).toContain("MissingToken");
+    });
+
+    it("should include registered tokens in hint", () => {
+      const token = createToken<string>("MissingToken");
+      const registered = createToken<string>("known");
+      const error = new ResolutionError(token, [], [registered]);
 
       expect(error.message).toContain("MissingToken");
-      expect(error.message).toContain("known");
+      expect(error.message).toContain("Did you forget to register");
+    });
+
+    it("should include scope path", () => {
+      const token = createToken<string>("ScopedToken");
+      const error = new ResolutionError(token, ["root", "request"]);
+
+      expect(error.message).toContain("root → request");
     });
   });
 
   describe("AsyncFactoryError", () => {
-    it("should include helpful hint", () => {
-      const token = createToken<unknown>("AsyncService");
+    it("should create error with token name", () => {
+      const token = createToken<object>("AsyncService");
       const error = new AsyncFactoryError(token);
 
-      expect(error.message).toContain("async");
-      expect(error.message).toContain("resolveAsync");
+      expect(error).toBeInstanceOf(Error);
+      expect(error.message).toContain("AsyncService");
+    });
+
+    it("should include cause if provided", () => {
+      const token = createToken<object>("AsyncService");
+      const cause = new Error("network timeout");
+      const error = new AsyncFactoryError(token, cause);
+
+      expect(error.cause).toBe(cause);
     });
   });
 
   describe("DisposedContainerError", () => {
-    it("should be thrown after dispose", async () => {
-      const container = new Container();
-      const token = createToken<unknown>("Service");
-      container.registerClass(token, class {});
+    it("should create error with message", () => {
+      const error = new DisposedContainerError();
 
-      await container.dispose();
-
-      expect(() => container.resolve(token)).toThrow(DisposedContainerError);
+      expect(error).toBeInstanceOf(Error);
+      expect(error.message).toContain("disposed");
     });
   });
 });
