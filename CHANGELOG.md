@@ -5,10 +5,10 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.2.0-dev.0] - 2026-04-10
 
 ### Added
-- Initial implementation of tsinject DI container
+- Initial implementation of tsinject DI container (renamed from tsneedle)
 - Token system with branded types
 - Container with registration methods (registerClass, registerFactory, registerValue, registerSingleton)
 - Lifecycle management (Transient, Singleton, Scoped)
@@ -30,5 +30,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - ESM + CJS dual module format
 - TypeScript 5.2+ Stage 3 decorators
 - Strong type safety with branded tokens
+- Scoped package name: @mrmeaow/tsinject
 
-[Unreleased]: https://github.com/mrmeaow/tsinject/compare/v0.1.0...HEAD
+[0.2.0-dev.0]: https://github.com/mrmeaow/tsinject/releases/tag/v0.2.0-dev.0
+[Unreleased]: https://github.com/mrmeaow/tsinject/compare/v0.2.0-dev.0...HEAD
