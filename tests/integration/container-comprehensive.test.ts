@@ -1,10 +1,10 @@
-import { describe, expect, it, vi, beforeEach } from "vitest";
 import {
   Container,
-  createToken,
   Lifecycle,
+  createToken,
   defineModule,
 } from "@mrmeaow/tsinject";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 describe("Container Comprehensive Coverage", () => {
   let container: Container;
@@ -28,7 +28,9 @@ describe("Container Comprehensive Coverage", () => {
 
     it("should register and resolve class", () => {
       const Token = createToken<{ name: string }>("Class");
-      class Service { name = "service"; }
+      class Service {
+        name = "service";
+      }
       container.registerClass(Token, Service);
       expect(container.resolve(Token).name).toBe("service");
     });
@@ -36,7 +38,9 @@ describe("Container Comprehensive Coverage", () => {
     it("should register and resolve singleton", () => {
       const Token = createToken<object>("Singleton");
       class Service {}
-      container.registerClass(Token, Service, { lifecycle: Lifecycle.Singleton });
+      container.registerClass(Token, Service, {
+        lifecycle: Lifecycle.Singleton,
+      });
       const a = container.resolve(Token);
       const b = container.resolve(Token);
       expect(a).toBe(b);
@@ -45,7 +49,9 @@ describe("Container Comprehensive Coverage", () => {
     it("should register transient", () => {
       const Token = createToken<object>("Transient");
       class Service {}
-      container.registerClass(Token, Service, { lifecycle: Lifecycle.Transient });
+      container.registerClass(Token, Service, {
+        lifecycle: Lifecycle.Transient,
+      });
       const a = container.resolve(Token);
       const b = container.resolve(Token);
       expect(a).not.toBe(b);
@@ -100,7 +106,9 @@ describe("Container Comprehensive Coverage", () => {
 
     it("should resolve class async", async () => {
       const Token = createToken<{ name: string }>("AsyncClass");
-      class Service { name = "async-service"; }
+      class Service {
+        name = "async-service";
+      }
       container.registerClass(Token, Service);
       expect((await container.resolveAsync(Token)).name).toBe("async-service");
     });
@@ -185,7 +193,9 @@ describe("Container Comprehensive Coverage", () => {
     it("should share singleton across scopes", () => {
       const Token = createToken<object>("SharedSingleton");
       class Service {}
-      container.registerClass(Token, Service, { lifecycle: Lifecycle.Singleton });
+      container.registerClass(Token, Service, {
+        lifecycle: Lifecycle.Singleton,
+      });
       const scope = container.createScope("request");
       expect(container.resolve(Token)).toBe(scope.resolve(Token));
     });
@@ -206,7 +216,9 @@ describe("Container Comprehensive Coverage", () => {
     it("should load module with values", () => {
       const Token = createToken<string>("ModuleValue");
       const mod = defineModule({
-        providers: [{ token: Token, provider: { type: "value", useValue: "mod" } }],
+        providers: [
+          { token: Token, provider: { type: "value", useValue: "mod" } },
+        ],
       });
       container.load(mod);
       expect(container.resolve(Token)).toBe("mod");
@@ -214,9 +226,13 @@ describe("Container Comprehensive Coverage", () => {
 
     it("should load module with classes", () => {
       const Token = createToken<{ name: string }>("ModuleClass");
-      class Service { name = "mod-class"; }
+      class Service {
+        name = "mod-class";
+      }
       const mod = defineModule({
-        providers: [{ token: Token, provider: { type: "class", useClass: Service } }],
+        providers: [
+          { token: Token, provider: { type: "class", useClass: Service } },
+        ],
       });
       container.load(mod);
       expect(container.resolve(Token).name).toBe("mod-class");
@@ -225,7 +241,9 @@ describe("Container Comprehensive Coverage", () => {
     it("should load module with factories", () => {
       const Token = createToken<number>("ModuleFactory");
       const mod = defineModule({
-        providers: [{ token: Token, provider: { type: "factory", useFactory: () => 99 } }],
+        providers: [
+          { token: Token, provider: { type: "factory", useFactory: () => 99 } },
+        ],
       });
       container.load(mod);
       expect(container.resolve(Token)).toBe(99);
@@ -235,10 +253,14 @@ describe("Container Comprehensive Coverage", () => {
       const TokenA = createToken<string>("ModA");
       const TokenB = createToken<string>("ModB");
       const modA = defineModule({
-        providers: [{ token: TokenA, provider: { type: "value", useValue: "a" } }],
+        providers: [
+          { token: TokenA, provider: { type: "value", useValue: "a" } },
+        ],
       });
       const modB = defineModule({
-        providers: [{ token: TokenB, provider: { type: "value", useValue: "b" } }],
+        providers: [
+          { token: TokenB, provider: { type: "value", useValue: "b" } },
+        ],
         imports: [modA],
       });
       container.load(modB);

@@ -1,13 +1,13 @@
-import { describe, expect, it, vi, beforeEach } from "vitest";
 import {
   Container,
-  createToken,
   Lifecycle,
-  injectable,
+  createToken,
   inject,
+  injectable,
   optional,
   postConstruct,
 } from "@mrmeaow/tsinject";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 describe("Container - Deep Coverage", () => {
   let container: Container;
@@ -40,7 +40,9 @@ describe("Container - Deep Coverage", () => {
     it("should cache singleton on async resolve", async () => {
       const Token = createToken<object>("AsyncSingleton");
       class Service {}
-      container.registerClass(Token, Service, { lifecycle: Lifecycle.Singleton });
+      container.registerClass(Token, Service, {
+        lifecycle: Lifecycle.Singleton,
+      });
 
       const a = await container.resolveAsync(Token);
       const b = await container.resolveAsync(Token);
@@ -150,7 +152,9 @@ describe("Container - Deep Coverage", () => {
 
     it("should resolve class async", async () => {
       const Token = createToken<{ name: string }>("ClsAsync");
-      class S { name = "cls"; }
+      class S {
+        name = "cls";
+      }
       container.registerClass(Token, S);
       expect((await container.resolveAsync(Token)).name).toBe("cls");
     });
